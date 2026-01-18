@@ -92,55 +92,59 @@ class CRMLead(Document):
 
 	def link_whatsapp_contact(self):
 		"""Auto-link to WhatsApp Contact based on mobile number."""
-		if not self.mobile_no or self.whatsapp_contact:
-			return
+		from frappe import log_error
 
-		# Check if WhatsApp Contact DocType exists
-		if not frappe.db.exists("DocType", "WhatsApp Contact"):
-			return
+		try:
+			if not self.mobile_no or self.whatsapp_contact:
+				return
 
-		# Clean and normalize the mobile number for matching
-		cleaned_number = (
-			self.mobile_no.strip()
-			.replace(" ", "")
-			.replace("-", "")
-			.replace("(", "")
-			.replace(")", "")
-			.replace("+", "")
-		)
+			# Check if WhatsApp Contact DocType exists
+			if not frappe.db.exists("DocType", "WhatsApp Contact"):
+				return
 
-		# Find WhatsApp Contact by phone number
-		# Try exact match first, then partial match
-		contact = frappe.db.get_value(
-			"WhatsApp Contact",
-			{"mobile_number": self.mobile_no},
-			"name"
-		)
-
-		if not contact:
-			# Try without country code variations
-			contacts = frappe.db.get_all(
-				"WhatsApp Contact",
-				fields=["name", "mobile_number"],
+			# Clean and normalize the mobile number for matching
+			cleaned_number = (
+				self.mobile_no.strip()
+				.replace(" ", "")
+				.replace("-", "")
+				.replace("(", "")
+				.replace(")", "")
+				.replace("+", "")
 			)
-			for c in contacts:
-				if not c.mobile_number:
-					continue
-				c_cleaned = (
-					c.mobile_number.strip()
-					.replace(" ", "")
-					.replace("-", "")
-					.replace("(", "")
-					.replace(")", "")
-					.replace("+", "")
-				)
-				# Match if cleaned numbers are the same or one ends with the other
-				if c_cleaned == cleaned_number or c_cleaned.endswith(cleaned_number) or cleaned_number.endswith(c_cleaned):
-					contact = c.name
-					break
 
-		if contact:
-			self.whatsapp_contact = contact
+			contact = None
+
+			# Strategy 1: Exact Match on mobile_no
+			contact = frappe.db.get_value("WhatsApp Contact", {"mobile_no": self.mobile_no}, "name")
+
+			# Strategy 2: Fuzzy Match on mobile_no
+			if not contact:
+				contacts = frappe.db.get_all("WhatsApp Contact", fields=["name", "mobile_no"])
+				for c in contacts:
+					val = c.get("mobile_no")
+					if not val:
+						continue
+					val_cleaned = str(val).strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace("+", "")
+					
+					if val_cleaned == cleaned_number or val_cleaned.endswith(cleaned_number) or cleaned_number.endswith(val_cleaned):
+						contact = c.name
+						break
+
+			# Strategy 3: Match by Name (ID) if Strategy 1 & 2 failed
+			if not contact:
+				if frappe.db.exists("WhatsApp Contact", self.mobile_no):
+					contact = self.mobile_no
+				elif frappe.db.exists("WhatsApp Contact", cleaned_number):
+					contact = cleaned_number
+				elif frappe.db.exists("WhatsApp Contact", "+" + cleaned_number):
+					contact = "+" + cleaned_number
+
+			if contact:
+				self.whatsapp_contact = contact
+
+		except Exception:
+			# Log error but don't block save
+			log_error("Auto-linking WhatsApp Contact failed")
 
 	def set_full_name(self):
 		if self.first_name:
