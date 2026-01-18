@@ -181,6 +181,15 @@ def get_whatsapp_messages(reference_doctype, reference_name):
 		],
 	)
 
+	# Deduplicate messages by name (some messages may appear in both queries)
+	seen_names = set()
+	unique_messages = []
+	for msg in messages:
+		if msg["name"] not in seen_names:
+			seen_names.add(msg["name"])
+			unique_messages.append(msg)
+	messages = unique_messages
+
 	# Filter messages to get only Template messages
 	template_messages = [message for message in messages if message["message_type"] == "Template"]
 
