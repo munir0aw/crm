@@ -24,6 +24,7 @@
   "last_name",
   "email",
   "mobile_no",
+  "whatsapp_contact",
   "organization_tab",
   "section_break_uixv",
   "naming_series",
@@ -131,6 +132,13 @@
    "fieldtype": "Data",
    "label": "Mobile No",
    "options": "Phone"
+  },
+  {
+   "fieldname": "whatsapp_contact",
+   "fieldtype": "Link",
+   "label": "WhatsApp Contact",
+   "options": "WhatsApp Contact",
+   "read_only": 1
   },
   {
    "fieldname": "phone",

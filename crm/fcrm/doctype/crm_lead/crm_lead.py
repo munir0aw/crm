@@ -88,6 +88,59 @@ class CRMLead(Document):
 
 	def before_save(self):
 		self.apply_sla()
+		self.link_whatsapp_contact()
+
+	def link_whatsapp_contact(self):
+		"""Auto-link to WhatsApp Contact based on mobile number."""
+		if not self.mobile_no or self.whatsapp_contact:
+			return
+
+		# Check if WhatsApp Contact DocType exists
+		if not frappe.db.exists("DocType", "WhatsApp Contact"):
+			return
+
+		# Clean and normalize the mobile number for matching
+		cleaned_number = (
+			self.mobile_no.strip()
+			.replace(" ", "")
+			.replace("-", "")
+			.replace("(", "")
+			.replace(")", "")
+			.replace("+", "")
+		)
+
+		# Find WhatsApp Contact by phone number
+		# Try exact match first, then partial match
+		contact = frappe.db.get_value(
+			"WhatsApp Contact",
+			{"mobile_number": self.mobile_no},
+			"name"
+		)
+
+		if not contact:
+			# Try without country code variations
+			contacts = frappe.db.get_all(
+				"WhatsApp Contact",
+				fields=["name", "mobile_number"],
+			)
+			for c in contacts:
+				if not c.mobile_number:
+					continue
+				c_cleaned = (
+					c.mobile_number.strip()
+					.replace(" ", "")
+					.replace("-", "")
+					.replace("(", "")
+					.replace(")", "")
+					.replace("+", "")
+				)
+				# Match if cleaned numbers are the same or one ends with the other
+				if c_cleaned == cleaned_number or c_cleaned.endswith(cleaned_number) or cleaned_number.endswith(c_cleaned):
+					contact = c.name
+					break
+
+		if contact:
+			self.whatsapp_contact = contact
 
 	def set_full_name(self):
 		if self.first_name:

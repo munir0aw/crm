@@ -88,6 +88,38 @@ def get_whatsapp_messages(reference_doctype, reference_name):
 		return []
 	messages = []
 
+	# For CRM Lead, fetch historical messages from WhatsApp Contact
+	if reference_doctype == "CRM Lead":
+		whatsapp_contact = frappe.db.get_value(reference_doctype, reference_name, "whatsapp_contact")
+		if whatsapp_contact:
+			messages = frappe.get_all(
+				"WhatsApp Message",
+				filters={
+					"whatsapp_contact": whatsapp_contact,
+				},
+				fields=[
+					"name",
+					"type",
+					"to",
+					"from",
+					"content_type",
+					"message_type",
+					"attach",
+					"template",
+					"use_template",
+					"message_id",
+					"is_reply",
+					"reply_to_message_id",
+					"creation",
+					"message",
+					"status",
+					"reference_doctype",
+					"reference_name",
+					"template_parameters",
+					"template_header_parameters",
+				],
+			)
+
 	if reference_doctype == "CRM Deal":
 		lead = frappe.db.get_value(reference_doctype, reference_name, "lead")
 		if lead:
